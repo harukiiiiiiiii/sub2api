@@ -379,6 +379,11 @@
 
           <template #cell-actions="{ row }">
             <div class="flex items-center gap-1">
+              <GroupQuotaReset
+                v-if="row.subscription_type === 'subscription'"
+                :group="row"
+                @reset="loadGroups"
+              />
               <button
                 @click="handleEdit(row)"
                 class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
@@ -4290,6 +4295,7 @@ import Pagination from "@/components/common/Pagination.vue";
 import Toggle from "@/components/common/Toggle.vue";
 import BaseDialog from "@/components/common/BaseDialog.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
+import GroupQuotaReset from "@/components/group/GroupQuotaReset.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
 import Select from "@/components/common/Select.vue";
 import PlatformIcon from "@/components/common/PlatformIcon.vue";

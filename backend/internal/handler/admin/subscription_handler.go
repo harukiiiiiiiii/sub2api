@@ -224,6 +224,31 @@ type ResetSubscriptionQuotaRequest struct {
 	Monthly bool `json:"monthly"`
 }
 
+// ResetGroupQuota resets all non-revoked subscriptions belonging to one group.
+func (h *SubscriptionHandler) ResetGroupQuota(c *gin.Context) {
+	groupID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || groupID <= 0 {
+		response.BadRequest(c, "Invalid group ID")
+		return
+	}
+	var req ResetSubscriptionQuotaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if !req.Daily && !req.Weekly && !req.Monthly {
+		response.BadRequest(c, "At least one usage window must be selected")
+		return
+	}
+	payload := struct {
+		GroupID int64 `json:"group_id"`
+		ResetSubscriptionQuotaRequest
+	}{groupID, req}
+	executeAdminIdempotentJSON(c, "admin.groups.reset-subscription-quota", payload, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
+		return h.subscriptionService.AdminResetGroupQuota(ctx, groupID, req.Daily, req.Weekly, req.Monthly)
+	})
+}
+
 // ResetQuota resets daily, weekly, and/or monthly usage for a subscription.
 // POST /api/v1/admin/subscriptions/:id/reset-quota
 func (h *SubscriptionHandler) ResetQuota(c *gin.Context) {

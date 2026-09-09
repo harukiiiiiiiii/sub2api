@@ -224,7 +224,7 @@ func (r *userSubscriptionRepository) ListByGroupID(ctx context.Context, groupID 
 	subs, err := q.
 		WithUser().
 		WithGroup().
-		Order(dbent.Desc(usersubscription.FieldCreatedAt)).
+		Order(dbent.Desc(usersubscription.FieldCreatedAt), dbent.Desc(usersubscription.FieldID)).
 		Offset(params.Offset()).
 		Limit(params.Limit()).
 		All(ctx)

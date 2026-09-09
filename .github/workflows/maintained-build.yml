@@ -3,7 +3,7 @@ name: Maintained Linux Build
 on:
   workflow_dispatch:
   push:
-    branches: ['codex/stable']
+    branches: ['codex/stable', 'codex/group-quota-reset']
 
 permissions:
   contents: read

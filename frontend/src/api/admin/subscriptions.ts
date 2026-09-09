@@ -148,6 +148,19 @@ export async function resetQuota(
   return data
 }
 
+export async function resetGroupQuota(
+  groupId: number,
+  options: { daily: boolean; weekly: boolean; monthly: boolean },
+  operationKey: string
+): Promise<{ reset_count: number; cache_warnings: number }> {
+  const { data } = await apiClient.post(
+    `/admin/groups/${groupId}/subscriptions/reset-quota`,
+    options,
+    { headers: { 'Idempotency-Key': operationKey }, timeout: 120000 }
+  )
+  return data
+}
+
 /**
  * List subscriptions by group
  * @param groupId - Group ID
@@ -200,6 +213,7 @@ export const subscriptionsAPI = {
   revoke,
   restore,
   resetQuota,
+  resetGroupQuota,
   listByGroup,
   listByUser
 }

@@ -778,6 +778,21 @@ export default {
 
     // Groups
     groups: {
+      quotaReset: {
+        action: 'Reset subscription usage',
+        title: 'Bulk reset used quota',
+        scope: 'Clear selected usage for all non-revoked subscriptions in "{name}".',
+        hint: 'Limits, subscription dates, and historical usage logs stay unchanged. Daily usage still refreshes at midnight; weekly/monthly windows restart now.',
+        count: 'Currently affects {count} subscriptions',
+        windows: 'Select usage to clear',
+        daily: 'Daily usage',
+        weekly: 'Weekly usage',
+        monthly: 'Monthly usage',
+        confirm: 'Confirm reset',
+        success: 'Reset selected usage for {count} subscriptions',
+        failed: 'Reset failed. Please retry.',
+        cacheWarning: 'Usage was reset, but some caches could not refresh. Changes may be delayed. Do not reset again.',
+      },
       title: 'Group Management',
       description: 'Manage API key groups and rate multipliers',
       searchGroups: 'Search groups...',

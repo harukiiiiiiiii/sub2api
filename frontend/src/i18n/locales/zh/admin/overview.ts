@@ -775,6 +775,21 @@ export default {
 
     // Groups Management
     groups: {
+      quotaReset: {
+        action: '重置订阅额度',
+        title: '批量重置已用额度',
+        scope: '将「{name}」分组下全部未撤销订阅的所选已用额度清零。',
+        hint: '额度上限、订阅时间和历史消费记录不变。日用量仍在每天零点刷新；周／月周期从本次重置时刻重新计算。',
+        count: '当前影响 {count} 个订阅',
+        windows: '选择要清零的已用额度',
+        daily: '日已用额度',
+        weekly: '周已用额度',
+        monthly: '月已用额度',
+        confirm: '确认清零',
+        success: '已重置 {count} 个订阅的所选已用额度',
+        failed: '重置失败，请重试',
+        cacheWarning: '额度已清零，但部分缓存刷新失败，生效可能延迟。请勿重复清零。',
+      },
       title: '分组管理',
       description: '管理 API 密钥分组和费率配置',
       searchGroups: '搜索分组...',
