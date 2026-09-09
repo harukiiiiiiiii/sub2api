@@ -2,8 +2,6 @@ name: Maintained Linux Build
 
 on:
   workflow_dispatch:
-  push:
-    branches: ['codex/stable']
 
 permissions:
   contents: read
