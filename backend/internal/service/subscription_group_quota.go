@@ -39,7 +39,7 @@ func (s *SubscriptionService) AdminResetGroupQuota(ctx context.Context, groupID 
 		if err != nil {
 			return nil, err
 		}
-		defer tx.Rollback() // No-op after a successful commit.
+		defer func() { _ = tx.Rollback() }() // No-op after a successful commit.
 		txCtx = dbent.NewTxContext(ctx, tx)
 	}
 	now := s.now()
