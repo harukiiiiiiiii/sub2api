@@ -1,0 +1,80 @@
+name: Maintained Linux Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['codex/stable']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: maintained-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+      GOMAXPROCS: '2'
+      GOMEMLIMIT: 3GiB
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '9'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Check frontend
+        run: make test-frontend
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm run build
+      - name: Backend unit tests (including image model assertions)
+        working-directory: backend
+        run: go test -p 2 -tags=unit ./...
+      - name: Backend integration tests
+        working-directory: backend
+        run: go test -p 2 -tags=integration ./...
+      - name: Build Linux amd64 with embedded frontend
+        working-directory: backend
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          set -euo pipefail
+          version="$(./scripts/resolve-version.sh)-maintained-${GITHUB_SHA:0:8}"
+          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          mkdir -p ../artifacts
+          go build -p 2 -tags embed -trimpath \
+            -ldflags="-s -w -X main.Version=${version} -X main.Commit=${GITHUB_SHA} -X main.Date=${build_date} -X main.BuildType=release" \
+            -o ../artifacts/sub2api ./cmd/server
+          printf 'version=%s\ncommit=%s\nbuild_date=%s\n' \
+            "$version" "$GITHUB_SHA" "$build_date" > ../artifacts/build-info.txt
+          go version >> ../artifacts/build-info.txt
+          cd ../artifacts
+          sha256sum sub2api > SHA256SUMS
+          tar -czf sub2api-linux-amd64.tar.gz sub2api build-info.txt SHA256SUMS
+          sha256sum sub2api-linux-amd64.tar.gz > sub2api-linux-amd64.tar.gz.sha256
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sub2api-linux-amd64-${{ github.sha }}
+          path: |
+            artifacts/sub2api-linux-amd64.tar.gz
+            artifacts/sub2api-linux-amd64.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 14
