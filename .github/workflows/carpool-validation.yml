@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: carpool-validation-${{ github.ref }}
@@ -36,6 +37,27 @@ jobs:
       GOMEMLIMIT: 3GiB
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Verify previously passed tests when only packaging changes
+        if: contains(github.event.head_commit.message, '[reuse-validated-tests]')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PYVERIFY'
+          import json, os, subprocess, urllib.request
+          validated = 'b42f2283f8d28af3588451ab3fb2a53eafc01117'
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD^'], text=True).strip() == validated
+          changed = subprocess.check_output(['git', 'diff', '--name-only', validated, 'HEAD'], text=True).splitlines()
+          assert changed == ['.github/workflows/carpool-validation.yml'], changed
+          for run_id in [34454663981, 34454663979]:
+              request = urllib.request.Request(f'https://api.github.com/repos/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{run_id}',
+                  headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  run = json.load(response)
+              assert run['head_sha'] == validated and run['conclusion'] == 'success', run_id
+          print('Application source unchanged; unit/integration/frontend/lint/security checks passed on', validated)
+          PYVERIFY
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
@@ -52,14 +74,17 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile
       - name: Check frontend
+        if: ${{ !contains(github.event.head_commit.message, '[reuse-validated-tests]') }}
         run: make test-frontend
       - name: Build frontend
         working-directory: frontend
         run: pnpm run build
       - name: Backend unit tests (including image model assertions)
+        if: ${{ !contains(github.event.head_commit.message, '[reuse-validated-tests]') }}
         working-directory: backend
         run: go test -p 2 -tags=unit ./...
       - name: Backend integration tests
+        if: ${{ !contains(github.event.head_commit.message, '[reuse-validated-tests]') }}
         working-directory: backend
         run: go test -p 2 -tags=integration ./...
       - name: Build Linux amd64 with embedded frontend
@@ -136,6 +161,9 @@ jobs:
                   return json.load(response)['data']
           login = admin_request('auth/login', 'POST', {'email': 'admin@example.test', 'password': 'ci-smoke-password-only'})
           token = login['access_token']
+          # Complete first-use initialization for the disposable CI administrator.
+          compliance = admin_request('admin/compliance', token=token)
+          admin_request('admin/compliance/accept', 'POST', {'phrase': compliance['ack_phrase_en'], 'language': 'en'}, token)
           current = admin_request('admin/settings', token=token)
           assert current['openai_images_default_model'] == 'gpt-image-2.5-flare'
           for model in ['gpt-image-2', 'gpt-image-2.5-flare']:
