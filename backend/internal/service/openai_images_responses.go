@@ -1801,7 +1801,7 @@ func (s *OpenAIGatewayService) forwardOpenAIImagesOAuth(
 		requestModel = mapped
 	}
 	if requestModel == "" {
-		requestModel = "gpt-image-2"
+		requestModel = s.defaultImageModel(ctx)
 	}
 	if err := validateOpenAIImagesModel(requestModel); err != nil {
 		return nil, err

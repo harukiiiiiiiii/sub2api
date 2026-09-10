@@ -41,6 +41,7 @@ const (
 	openAIImageMaxDownloadBytes            = 20 << 20 // 20MB per image download
 	openAIImageMaxUploadPartSize           = 20 << 20 // 20MB per multipart upload part
 	openAIImagesResponsesMainModel         = "gpt-5.6-luna"
+	openAIImagesDefaultToolModel           = "gpt-image-2.5-flare"
 	openAIImagesVerbatimPromptInstructions = "When invoking the image_generation tool, use the user's image prompt verbatim. Do not rewrite, expand, summarize, embellish, translate, normalize punctuation, or add or remove visual details or constraints. Preserve the original language, wording, capitalization, quotes, and punctuation exactly."
 )
 
@@ -226,6 +227,9 @@ func (s *OpenAIGatewayService) ParseOpenAIImagesRequest(c *gin.Context, body []b
 		}
 	}
 
+	if strings.TrimSpace(req.Model) == "" {
+		req.Model = s.defaultImageModel(c.Request.Context())
+	}
 	applyOpenAIImagesDefaults(req)
 	if err := validateOpenAIImagesModel(req.Model); err != nil {
 		return nil, err
@@ -463,7 +467,7 @@ func applyOpenAIImagesDefaults(req *OpenAIImagesRequest) {
 		req.Model = strings.TrimSpace(req.Model)
 		return
 	}
-	req.Model = "gpt-image-2"
+	req.Model = openAIImagesDefaultToolModel
 }
 
 func isOpenAIImageGenerationModel(model string) bool {

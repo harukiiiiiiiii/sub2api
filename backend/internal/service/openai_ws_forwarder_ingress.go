@@ -269,7 +269,7 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 			normalized = next
 		}
 		responsesLite := isOpenAIResponsesLiteWebSocketPayload(normalized)
-		if compatibilityBody, compatibilityChanged, compatibilityErr := normalizeOpenAIResponsesWebSocketCompatibilityBody(normalized, account, responsesLite); compatibilityErr != nil {
+		if compatibilityBody, compatibilityChanged, compatibilityErr := normalizeOpenAIResponsesWebSocketCompatibilityBody(normalized, account, responsesLite, s.defaultImageModelForBody(ctx, normalized)); compatibilityErr != nil {
 			return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket request payload", compatibilityErr)
 		} else if compatibilityChanged {
 			normalized = compatibilityBody
@@ -355,7 +355,8 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 				return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket request payload", err)
 			}
 			bridgeModified := false
-			if ensureOpenAIResponsesImageGenerationTool(payloadMap) {
+			defaultImageModel := s.defaultImageModel(ctx)
+			if ensureOpenAIResponsesImageGenerationTool(payloadMap, defaultImageModel) {
 				bridgeModified = true
 				logOpenAIWSModeInfo("ingress_ws_codex_image_tool_injected account_id=%d", account.ID)
 			}
@@ -363,7 +364,7 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 				bridgeModified = true
 				logOpenAIWSModeInfo("ingress_ws_codex_image_tool_choice_auto account_id=%d", account.ID)
 			}
-			if normalizeOpenAIResponsesImageGenerationTools(payloadMap) {
+			if normalizeOpenAIResponsesImageGenerationTools(payloadMap, defaultImageModel) {
 				bridgeModified = true
 			}
 			if applyCodexImageGenerationBridgeInstructions(payloadMap) {

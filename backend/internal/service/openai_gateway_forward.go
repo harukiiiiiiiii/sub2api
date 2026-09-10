@@ -415,7 +415,8 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		if decodeErr != nil {
 			return nil, decodeErr
 		}
-		if codexImageGenerationBridgeEnabled && ensureOpenAIResponsesImageGenerationTool(decoded) {
+		defaultImageModel := s.defaultImageModel(ctx)
+		if codexImageGenerationBridgeEnabled && ensureOpenAIResponsesImageGenerationTool(decoded, defaultImageModel) {
 			markDecodedModified()
 			logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Injected /responses image_generation tool for Codex client")
 		}
@@ -423,7 +424,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			markDecodedModified()
 			logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Set /responses image_generation tool_choice=auto for Codex client")
 		}
-		if normalizeOpenAIResponsesImageGenerationTools(decoded) {
+		if normalizeOpenAIResponsesImageGenerationTools(decoded, defaultImageModel) {
 			markDecodedModified()
 			logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Normalized /responses image_generation tool payload")
 		}

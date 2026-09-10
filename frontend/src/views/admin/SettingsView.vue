@@ -4440,6 +4440,17 @@
 
         <!-- Tab: Gateway — Claude Code, Scheduling -->
         <div v-show="activeTab === 'gateway'" class="space-y-6">
+          <div class="card p-6">
+            <label for="default-image-model" class="mb-2 block text-lg font-semibold">
+              {{ t("admin.settings.imageGeneration.defaultModel") }}
+            </label>
+            <select id="default-image-model" v-model="form.openai_images_default_model" class="input max-w-sm">
+              <option v-for="model in ['gpt-image-1', 'gpt-image-1.5', 'gpt-image-2', 'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst']" :key="model" :value="model">{{ model }}</option>
+            </select>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {{ t("admin.settings.imageGeneration.defaultModelHint") }}
+            </p>
+          </div>
           <!-- Claude Code Settings -->
           <div class="card">
             <div
@@ -9777,6 +9788,7 @@ const form = reactive<SettingsForm>({
   openai_advanced_scheduler_weight_previous_response: "",
   openai_advanced_scheduler_weight_session_sticky: "",
   // Gateway forwarding behavior
+  openai_images_default_model: "gpt-image-2.5-flare",
   openai_ttft_mode: "semantic",
   enable_fingerprint_unification: true,
   enable_metadata_passthrough: false,
@@ -11355,6 +11367,7 @@ async function saveSettings() {
       min_claude_code_version: form.min_claude_code_version,
       max_claude_code_version: form.max_claude_code_version,
       allow_ungrouped_key_scheduling: form.allow_ungrouped_key_scheduling,
+      openai_images_default_model: form.openai_images_default_model,
       openai_ttft_mode:
         form.openai_ttft_mode === "visible" ? "visible" : "semantic",
       enable_fingerprint_unification: form.enable_fingerprint_unification,

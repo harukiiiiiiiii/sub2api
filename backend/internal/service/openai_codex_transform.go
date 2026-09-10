@@ -890,7 +890,16 @@ func validateCodexSparkInput(reqBody map[string]any, model string) error {
 	return fmt.Errorf("model %q does not support image input", strings.TrimSpace(model))
 }
 
-func normalizeOpenAIResponsesImageGenerationTools(reqBody map[string]any) bool {
+// An explicitly requested image model takes precedence over the default tool model.
+func defaultOpenAIResponsesImageToolModel(reqBody map[string]any, defaultModel ...string) string {
+	model := strings.TrimSpace(firstNonEmptyString(reqBody["model"]))
+	if isOpenAIImageGenerationModel(model) {
+		return model
+	}
+	return optionalDefaultImageModel(defaultModel)
+}
+
+func normalizeOpenAIResponsesImageGenerationTools(reqBody map[string]any, defaultModel ...string) bool {
 	rawTools, ok := reqBody["tools"]
 	if !ok || rawTools == nil {
 		return false
@@ -924,6 +933,10 @@ func normalizeOpenAIResponsesImageGenerationTools(reqBody map[string]any) bool {
 		}
 		if _, ok := toolMap["compression"]; ok {
 			delete(toolMap, "compression")
+			modified = true
+		}
+		if strings.TrimSpace(firstNonEmptyString(toolMap["model"])) == "" {
+			toolMap["model"] = defaultOpenAIResponsesImageToolModel(reqBody, defaultModel...)
 			modified = true
 		}
 		imageModel := strings.ToLower(strings.TrimSpace(firstNonEmptyString(toolMap["model"])))
@@ -1048,7 +1061,7 @@ func normalizeOpenAIResponseJSONSchema(schema map[string]any) bool {
 	return modified
 }
 
-func ensureOpenAIResponsesImageGenerationTool(reqBody map[string]any) bool {
+func ensureOpenAIResponsesImageGenerationTool(reqBody map[string]any, defaultModel ...string) bool {
 	if len(reqBody) == 0 {
 		return false
 	}
@@ -1063,6 +1076,7 @@ func ensureOpenAIResponsesImageGenerationTool(reqBody map[string]any) bool {
 	}
 
 	tool := map[string]any{
+		"model":         defaultOpenAIResponsesImageToolModel(reqBody, defaultModel...),
 		"type":          "image_generation",
 		"output_format": "png",
 	}

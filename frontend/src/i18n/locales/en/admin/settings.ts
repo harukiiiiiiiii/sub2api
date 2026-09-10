@@ -1,5 +1,9 @@
 export default {
     settings: {
+      imageGeneration: {
+        defaultModel: 'Default image model',
+        defaultModelHint: 'Used when an image request or image tool omits its model. Saving applies to subsequent requests; explicit models are preserved. Availability depends on the upstream account.',
+      },
       title: 'System Settings',
       description: 'Manage registration, email verification, default values, and SMTP settings',
       tabs: {

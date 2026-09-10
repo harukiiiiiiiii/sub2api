@@ -461,6 +461,11 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyBackendModeEnabled] = strconv.FormatBool(settings.BackendModeEnabled)
 
 	// Gateway forwarding behavior
+	imageModel := strings.TrimSpace(settings.OpenAIImagesDefaultModel)
+	if imageModel != "" && !validOpenAIImagesDefaultModel(imageModel) {
+		return nil, infraerrors.BadRequest("INVALID_OPENAI_IMAGES_DEFAULT_MODEL", "unsupported default image model")
+	}
+	updates[SettingKeyOpenAIImagesDefaultModel] = normalizeOpenAIImagesDefaultModel(imageModel)
 	mode := normalizeOpenAITTFTMode(settings.OpenAITTFTMode)
 	if strings.TrimSpace(settings.OpenAITTFTMode) != "" && strings.ToLower(strings.TrimSpace(settings.OpenAITTFTMode)) != OpenAITTFTModeSemantic && strings.ToLower(strings.TrimSpace(settings.OpenAITTFTMode)) != OpenAITTFTModeVisible {
 		return nil, fmt.Errorf("%s must be one of: %s/%s", SettingKeyOpenAITTFTMode, OpenAITTFTModeSemantic, OpenAITTFTModeVisible)

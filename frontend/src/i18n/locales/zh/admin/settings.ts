@@ -1,5 +1,9 @@
 export default {
     settings: {
+      imageGeneration: {
+        defaultModel: '默认绘图模型',
+        defaultModelHint: '图片接口或绘图工具未指定模型时使用。保存后对后续请求生效；已指定的模型不受影响。模型是否可用取决于上游账号。',
+      },
       title: '系统设置',
       description: '管理注册、邮箱验证、默认值和 SMTP 设置',
       tabs: {

@@ -1364,6 +1364,26 @@ describe("admin SettingsView payment visible method controls", () => {
     expect(payload.grok_cross_client_model_map_enabled).toBe(false);
   });
 
+  it("loads and saves the default image model", async () => {
+    getSettings.mockResolvedValueOnce({ ...baseSettingsResponse, openai_images_default_model: "gpt-image-2" });
+    const wrapper = mountView();
+    await flushPromises();
+    await openGatewayTab(wrapper);
+    const select = wrapper.get("#default-image-model");
+    expect((select.element as HTMLSelectElement).value).toBe("gpt-image-2");
+    await select.setValue("gpt-image-2.5-flare");
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+    expect(updateSettings.mock.calls.at(-1)?.[0].openai_images_default_model).toBe("gpt-image-2.5-flare");
+  });
+
+  it("defaults to flare when an older server omits the image setting", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    await openGatewayTab(wrapper);
+    expect((wrapper.get("#default-image-model").element as HTMLSelectElement).value).toBe("gpt-image-2.5-flare");
+  });
+
   it("loads and saves the OpenAI Responses first-token metric mode", async () => {
     getSettings.mockResolvedValueOnce({
       ...baseSettingsResponse,

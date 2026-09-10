@@ -124,6 +124,27 @@ jobs:
           for flag in ['registration_enabled', 'promo_code_enabled', 'payment_enabled', 'affiliate_enabled', 'model_plaza_enabled']:
               assert settings[flag] is False, flag
           assert not settings['custom_menu_items']
+          import urllib.request
+          def admin_request(path, method='GET', payload=None, token=None):
+              headers = {'Content-Type': 'application/json'}
+              if token:
+                  headers['Authorization'] = 'Bearer ' + token
+              request = urllib.request.Request('http://127.0.0.1:18080/api/v1/' + path,
+                  data=json.dumps(payload).encode() if payload is not None else None,
+                  headers=headers, method=method)
+              with urllib.request.urlopen(request, timeout=15) as response:
+                  return json.load(response)['data']
+          login = admin_request('auth/login', 'POST', {'email': 'admin@example.test', 'password': 'ci-smoke-password-only'})
+          token = login['access_token']
+          current = admin_request('admin/settings', token=token)
+          assert current['openai_images_default_model'] == 'gpt-image-2.5-flare'
+          for model in ['gpt-image-2', 'gpt-image-2.5-flare']:
+              current['openai_images_default_model'] = model
+              saved = admin_request('admin/settings', 'PUT', current, token)
+              assert saved['openai_images_default_model'] == model
+              current = admin_request('admin/settings', token=token)
+              assert current['openai_images_default_model'] == model
+          print('Default image model admin read/save smoke passed')
           PYSETTINGS
           for path in payment/config redeem model-plaza pages auth/register; do
             status="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:18080/api/v1/$path")"

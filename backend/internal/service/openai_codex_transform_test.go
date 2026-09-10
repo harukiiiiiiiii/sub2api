@@ -853,6 +853,7 @@ func TestEnsureOpenAIResponsesImageGenerationTool_NoTools(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "image_generation", tool["type"])
 	require.Equal(t, "png", tool["output_format"])
+	require.Equal(t, "gpt-image-2.5-flare", tool["model"])
 }
 
 func TestEnsureOpenAIResponsesImageGenerationTool_SkipsSpark(t *testing.T) {
@@ -2197,5 +2198,34 @@ func TestFilterCodexInput_PreservesReasoningInMixedInput(t *testing.T) {
 			require.Len(t, byType["function_call_output"], 1)
 			require.Equal(t, "fc_1", byType["function_call_output"][0]["call_id"])
 		})
+	}
+}
+
+func TestImageToolDefaultPreservesExplicitModel(t *testing.T) {
+	for _, model := range []string{"", " ", "gpt-image-2", "gpt-image-2.5-sunburst"} {
+		t.Run(model, func(t *testing.T) {
+			tool := map[string]any{"type": "image_generation", "model": model}
+			body := map[string]any{"tools": []any{tool}}
+			normalizeOpenAIResponsesImageGenerationTools(body)
+			want := model
+			if model == "" || model == " " {
+				want = "gpt-image-2.5-flare"
+			}
+			require.Equal(t, want, tool["model"])
+			require.False(t, normalizeOpenAIResponsesImageGenerationTools(body))
+		})
+	}
+}
+
+func TestImageToolDefaultPreservesTopLevelImageModel(t *testing.T) {
+	for _, explicitTool := range []bool{false, true} {
+		body := map[string]any{"model": "gpt-image-2"}
+		if explicitTool {
+			body["tools"] = []any{map[string]any{"type": "image_generation"}}
+		}
+		ensureOpenAIResponsesImageGenerationTool(body)
+		normalizeOpenAIResponsesImageGenerationTools(body)
+		tool := body["tools"].([]any)[0].(map[string]any)
+		require.Equal(t, "gpt-image-2", tool["model"])
 	}
 }
