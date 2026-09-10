@@ -360,6 +360,8 @@ func TestNormalizeRunMode(t *testing.T) {
 	}{
 		{"simple", "simple"},
 		{"SIMPLE", "simple"},
+		{"carpool", "carpool"},
+		{" CARPOOL ", "carpool"},
 		{"standard", "standard"},
 		{"invalid", "standard"},
 		{"", "standard"},

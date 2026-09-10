@@ -541,6 +541,9 @@ func buildDingTalkSyntheticEmail(userID string) string {
 // 镜像 service.AuthService.canBypassRegistrationDisabledForOAuth 用于 OAuth callback
 // 早期路由决策：注册被拦 → 跳过补邮箱页直接进 bind_login，避免用户填完表单才报错。
 func (h *AuthHandler) isDingTalkSignupBlocked(ctx context.Context, cfg config.DingTalkConnectConfig) bool {
+	if h.settingSvc.IsCarpoolMode() {
+		return true
+	}
 	if h.settingSvc == nil {
 		return false
 	}

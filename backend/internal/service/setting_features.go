@@ -16,6 +16,9 @@ import (
 
 // IsRegistrationEnabled 检查是否开放注册
 func (s *SettingService) IsRegistrationEnabled(ctx context.Context) bool {
+	if s.IsCarpoolMode() {
+		return false
+	}
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyRegistrationEnabled)
 	if err != nil {
 		// 安全默认：如果设置不存在或查询出错，默认关闭注册
@@ -54,6 +57,9 @@ func (s *SettingService) GetRegistrationEmailSuffixWhitelist(ctx context.Context
 
 // IsPromoCodeEnabled 检查是否启用优惠码功能
 func (s *SettingService) IsPromoCodeEnabled(ctx context.Context) bool {
+	if s.IsCarpoolMode() {
+		return false
+	}
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyPromoCodeEnabled)
 	if err != nil {
 		return true // 默认启用
@@ -72,6 +78,9 @@ func (s *SettingService) IsInvitationCodeEnabled(ctx context.Context) bool {
 
 // GetCustomMenuItemsRaw returns the raw JSON string of custom_menu_items setting.
 func (s *SettingService) GetCustomMenuItemsRaw(ctx context.Context) string {
+	if s.IsCarpoolMode() {
+		return "[]"
+	}
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyCustomMenuItems)
 	if err != nil {
 		return "[]"
@@ -81,6 +90,9 @@ func (s *SettingService) GetCustomMenuItemsRaw(ctx context.Context) string {
 
 // IsAffiliateEnabled 检查是否启用邀请返利功能（总开关）
 func (s *SettingService) IsAffiliateEnabled(ctx context.Context) bool {
+	if s.IsCarpoolMode() {
+		return false
+	}
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateEnabled)
 	if err != nil {
 		return false // 默认关闭
@@ -91,6 +103,9 @@ func (s *SettingService) IsAffiliateEnabled(ctx context.Context) bool {
 // IsAffiliateAdminRechargeEnabled reports whether admin balance
 // deposits should participate in the affiliate rebate program.
 func (s *SettingService) IsAffiliateAdminRechargeEnabled(ctx context.Context) bool {
+	if s.IsCarpoolMode() {
+		return false
+	}
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateAdminRechargeEnabled)
 	if err != nil {
 		return AdminRechargeRebateEnabledDefault

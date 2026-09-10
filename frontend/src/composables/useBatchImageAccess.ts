@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue'
+import { useAppStore } from '@/stores/app'
 import { keysAPI } from '@/api/keys'
 import { useAuthStore } from '@/stores/auth'
 import type { ApiKey } from '@/types'
@@ -19,7 +20,7 @@ function keyAllowsBatchImage(key: ApiKey): boolean {
 
 async function loadBatchImageAccess(force = false): Promise<boolean> {
   const authStore = useAuthStore()
-  if (!authStore.isAuthenticated) {
+  if (!authStore.isAuthenticated || authStore.isCarpoolMode || useAppStore().carpoolModeEnabled) {
     loaded.value = true
     hasAllowedBatchImageKey.value = false
     return false
@@ -72,7 +73,9 @@ async function loadBatchImageAccess(force = false): Promise<boolean> {
 }
 
 export function useBatchImageAccess() {
-  const canUseBatchImage = computed(() => hasAllowedBatchImageKey.value)
+  const authStore = useAuthStore()
+  const appStore = useAppStore()
+  const canUseBatchImage = computed(() => !authStore.isCarpoolMode && !appStore.carpoolModeEnabled && hasAllowedBatchImageKey.value)
 
   return {
     canUseBatchImage,

@@ -1,3 +1,4 @@
+import { isCarpoolRestrictedPath } from '@/utils/carpoolMode'
 /**
  * Vue Router configuration for Sub2API frontend
  * Defines all application routes with lazy loading and navigation guards
@@ -813,6 +814,17 @@ router.beforeEach(async (to, _from, next) => {
     } catch {
       // If setup status cannot be determined, keep the setup page reachable.
     }
+  }
+
+  if (isCarpoolRestrictedPath(to.path) && !appStore.publicSettingsLoaded) {
+    await appStore.fetchPublicSettings()
+  }
+  if (
+    (appStore.carpoolModeEnabled || authStore.isCarpoolMode) &&
+    isCarpoolRestrictedPath(to.path)
+  ) {
+    next(authStore.isAuthenticated ? (authStore.isAdmin ? '/admin/dashboard' : '/dashboard') : '/login')
+    return
   }
 
   // If route doesn't require auth, allow access

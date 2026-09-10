@@ -208,6 +208,7 @@ export interface LoginAgreementDocument {
 }
 
 export interface PublicSettings {
+  carpool_mode_enabled?: boolean
   registration_enabled: boolean
   email_verify_enabled: boolean
   force_email_on_third_party_signup: boolean
@@ -289,11 +290,11 @@ export interface AuthResponse {
   refresh_token?: string  // New: Refresh Token for token renewal
   expires_in?: number     // New: Access Token expiry time in seconds
   token_type: string
-  user: User & { run_mode?: 'standard' | 'simple' }
+  user: User & { run_mode?: 'standard' | 'simple' | 'carpool' }
 }
 
 export interface CurrentUserResponse extends User {
-  run_mode?: 'standard' | 'simple'
+  run_mode?: 'standard' | 'simple' | 'carpool'
 }
 
 // ==================== Subscription Types ====================

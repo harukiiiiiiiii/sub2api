@@ -317,6 +317,7 @@ type DefaultSubscriptionSetting struct {
 }
 
 type PublicSettings struct {
+	CarpoolModeEnabled                  bool
 	RegistrationEnabled                 bool
 	EmailVerifyEnabled                  bool
 	ForceEmailOnThirdPartySignup        bool

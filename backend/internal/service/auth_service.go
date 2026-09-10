@@ -263,7 +263,7 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
 	// snapshot user × platform quota（fail-open）
 	_ = s.snapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
-	if s.affiliateService != nil {
+	if s.affiliateService != nil && !s.settingService.IsCarpoolMode() {
 		if _, err := s.affiliateService.EnsureUserAffiliate(ctx, user.ID); err != nil {
 			logger.LegacyPrintf("service.auth", "[Auth] Failed to initialize affiliate profile for user %d: %v", user.ID, err)
 		}
@@ -666,7 +666,7 @@ func (s *AuthService) LoginOrRegisterOAuth(ctx context.Context, email, username 
 // canBypassRegistrationDisabledForOAuth 在钉钉企业模式（internal_only）且
 // dingtalk_connect_bypass_registration=true 时，允许跳过全局 registration_enabled 检查。
 func (s *AuthService) canBypassRegistrationDisabledForOAuth(ctx context.Context, signupSource string) bool {
-	if signupSource != "dingtalk" {
+	if s.settingService.IsCarpoolMode() || signupSource != "dingtalk" {
 		return false
 	}
 	cfg, err := s.settingService.GetDingTalkConnectOAuthConfig(ctx)
@@ -906,6 +906,9 @@ func (s *AuthService) resolveSignupGrantPlan(ctx context.Context, signupSource s
 		return plan
 	}
 
+	if s.settingService.IsCarpoolMode() {
+		return signupGrantPlan{Concurrency: plan.Concurrency}
+	}
 	plan.Balance = s.settingService.GetDefaultBalance(ctx)
 	plan.Concurrency = s.settingService.GetDefaultConcurrency(ctx)
 	plan.Subscriptions = s.settingService.GetDefaultSubscriptions(ctx)
@@ -974,7 +977,7 @@ func authSourceSignupSettings(defaults *AuthSourceDefaultSettings, signupSource 
 // bindOAuthAffiliate initializes the affiliate profile and binds the inviter
 // for an OAuth-registered user. Failures are logged but never block registration.
 func (s *AuthService) bindOAuthAffiliate(ctx context.Context, userID int64, affiliateCode string) {
-	if s.affiliateService == nil || userID <= 0 {
+	if s.affiliateService == nil || userID <= 0 || s.settingService.IsCarpoolMode() {
 		return
 	}
 	if _, err := s.affiliateService.EnsureUserAffiliate(ctx, userID); err != nil {

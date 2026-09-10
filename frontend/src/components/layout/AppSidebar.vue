@@ -194,6 +194,7 @@ import { useI18n } from 'vue-i18n'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { isCarpoolRestrictedPath } from '@/utils/carpoolMode'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
@@ -225,6 +226,7 @@ interface NavItem {
 function applyFeatureFlags(items: NavItem[]): NavItem[] {
   const out: NavItem[] = []
   for (const item of items) {
+    if ((appStore.carpoolModeEnabled || authStore.isCarpoolMode) && isCarpoolRestrictedPath(item.path)) continue
     if (item.featureFlag && item.featureFlag() === false) continue
     if (item.children) {
       out.push({ ...item, children: applyFeatureFlags(item.children) })
@@ -746,6 +748,7 @@ const personalNavItems = computed((): NavItem[] => finalizeNav(buildSelfNavItems
 
 // Custom menu items filtered by visibility
 const customMenuItemsForUser = computed(() => {
+  if (appStore.carpoolModeEnabled || authStore.isCarpoolMode) return []
   const items = appStore.cachedPublicSettings?.custom_menu_items ?? []
   return items
     .filter((item) => item.visibility === 'user')
@@ -753,6 +756,7 @@ const customMenuItemsForUser = computed(() => {
 })
 
 const customMenuItemsForAdmin = computed(() => {
+  if (appStore.carpoolModeEnabled || authStore.isCarpoolMode) return []
   return adminSettingsStore.customMenuItems
     .filter((item) => item.visibility === 'admin')
     .sort((a, b) => a.sort_order - b.sort_order)

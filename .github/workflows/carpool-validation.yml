@@ -1,0 +1,152 @@
+name: Carpool Validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['codex/carpool-validation-20260910']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carpool-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[validate-carpool]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: sub2api
+          POSTGRES_PASSWORD: ci-smoke-only
+          POSTGRES_DB: sub2api
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U sub2api" --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports: ['6379:6379']
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+      GOMAXPROCS: '2'
+      GOMEMLIMIT: 3GiB
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '9'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Check frontend
+        run: make test-frontend
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm run build
+      - name: Backend unit tests (including image model assertions)
+        working-directory: backend
+        run: go test -p 2 -tags=unit ./...
+      - name: Backend integration tests
+        working-directory: backend
+        run: go test -p 2 -tags=integration ./...
+      - name: Build Linux amd64 with embedded frontend
+        working-directory: backend
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          set -euo pipefail
+          version="$(./scripts/resolve-version.sh)-maintained-${GITHUB_SHA:0:8}"
+          build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          mkdir -p ../artifacts
+          go build -p 2 -tags embed -trimpath \
+            -ldflags="-s -w -X main.Version=${version} -X main.Commit=${GITHUB_SHA} -X main.Date=${build_date} -X main.BuildType=release" \
+            -o ../artifacts/sub2api ./cmd/server
+          printf 'version=%s\ncommit=%s\nbuild_date=%s\n' \
+            "$version" "$GITHUB_SHA" "$build_date" > ../artifacts/build-info.txt
+          go version >> ../artifacts/build-info.txt
+          cd ../artifacts
+          sha256sum sub2api > SHA256SUMS
+          tar -czf sub2api-linux-amd64.tar.gz sub2api build-info.txt SHA256SUMS
+          sha256sum sub2api-linux-amd64.tar.gz > sub2api-linux-amd64.tar.gz.sha256
+      - name: Package and smoke-test runtime image
+        run: |
+          set -euo pipefail
+          python3 - <<'PYDOCKER'
+          from pathlib import Path
+          original = Path('Dockerfile').read_text()
+          runtime = original[original.index('FROM ${POSTGRES_IMAGE} AS pg-client'):]
+          prefix = '''ARG ALPINE_IMAGE=alpine:3.21
+          ARG POSTGRES_IMAGE=postgres:18-alpine
+          FROM scratch AS backend-builder
+          COPY artifacts/sub2api /app/sub2api
+          COPY backend/resources /app/backend/resources
+          '''
+          Path('artifacts/Dockerfile.runtime').write_text(prefix + runtime)
+          PYDOCKER
+          image_tag="sub2api:carpool-${GITHUB_SHA:0:8}"
+          docker build -f artifacts/Dockerfile.runtime -t "$image_tag" .
+          docker run --rm "$image_tag" /app/sub2api -version
+          docker run --rm --entrypoint /bin/sh "$image_tag" -c 'pg_dump --version && psql --version'
+          container_id="$(docker run -d --network host -e RUN_MODE=carpool -e AUTO_SETUP=true -e SERVER_PORT=18080 \
+            -e DATABASE_HOST=127.0.0.1 -e DATABASE_PORT=5432 -e DATABASE_USER=sub2api \
+            -e DATABASE_PASSWORD=ci-smoke-only -e DATABASE_DBNAME=sub2api -e DATABASE_SSLMODE=disable \
+            -e REDIS_HOST=127.0.0.1 -e REDIS_PORT=6379 \
+            -e ADMIN_EMAIL=admin@example.test -e ADMIN_PASSWORD=ci-smoke-password-only \
+            -e JWT_SECRET=ci-smoke-only-not-a-production-secret-20260910 "$image_tag")"
+          trap 'docker logs "$container_id"; docker rm -f "$container_id"' EXIT
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:18080/health > artifacts/image-health.json; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:18080/health
+          curl -fsS http://127.0.0.1:18080/setup/status > artifacts/image-setup-status.json
+          curl -fsS http://127.0.0.1:18080/api/v1/settings/public > artifacts/image-public-settings.json
+          python3 - <<'PYSETTINGS'
+          import json
+          from pathlib import Path
+          settings = json.loads(Path('artifacts/image-public-settings.json').read_text())['data']
+          assert settings['carpool_mode_enabled'] is True
+          for flag in ['registration_enabled', 'promo_code_enabled', 'payment_enabled', 'affiliate_enabled', 'model_plaza_enabled']:
+              assert settings[flag] is False, flag
+          assert not settings['custom_menu_items']
+          PYSETTINGS
+          for path in payment/config redeem model-plaza pages auth/register; do
+            status="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:18080/api/v1/$path")"
+            # Only registered methods reach middleware (register/redeem may be POST only).
+            if [ "$path" = auth/register ] || [ "$path" = redeem ]; then
+              status="$(curl -s -X POST -o /dev/null -w '%{http_code}' "http://127.0.0.1:18080/api/v1/$path")"
+            fi
+            test "$status" = 403
+          done
+          docker save "$image_tag" | gzip > artifacts/sub2api-carpool-image.tar.gz
+          cd artifacts
+          sha256sum sub2api-carpool-image.tar.gz > sub2api-carpool-image.tar.gz.sha256
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sub2api-linux-amd64-${{ github.sha }}
+          path: |
+            artifacts/sub2api-linux-amd64.tar.gz
+            artifacts/sub2api-linux-amd64.tar.gz.sha256
+            artifacts/sub2api-carpool-image.tar.gz
+            artifacts/sub2api-carpool-image.tar.gz.sha256
+            artifacts/image-health.json
+            artifacts/image-setup-status.json
+            artifacts/image-public-settings.json
+          if-no-files-found: error
+          retention-days: 14

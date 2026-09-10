@@ -50,6 +50,7 @@ export const useAppStore = defineStore('app', () => {
   // ==================== Computed ====================
 
   const hasActiveToasts = computed(() => toasts.value.length > 0)
+  const carpoolModeEnabled = computed(() => cachedPublicSettings.value?.carpool_mode_enabled === true)
   const backendModeEnabled = computed(() => cachedPublicSettings.value?.backend_mode_enabled ?? false)
 
   const loadingCount = ref<number>(0)
@@ -464,6 +465,7 @@ export const useAppStore = defineStore('app', () => {
     // Computed
     hasActiveToasts,
     backendModeEnabled,
+    carpoolModeEnabled,
 
     // Actions
     toggleSidebar,
