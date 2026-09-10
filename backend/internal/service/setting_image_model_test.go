@@ -58,6 +58,11 @@ func TestConfiguredImageModelRequests(t *testing.T) {
 	}
 	body := map[string]any{"model": "gpt-5.6-luna"}
 	require.True(t, ensureOpenAIResponsesImageGenerationTool(body, "gpt-image-2.5-sunburst"))
-	require.Equal(t, "gpt-image-2.5-sunburst", body["tools"].([]any)[0].(map[string]any)["model"])
+	tools, ok := body["tools"].([]any)
+	require.True(t, ok)
+	require.Len(t, tools, 1)
+	tool, ok := tools[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "gpt-image-2.5-sunburst", tool["model"])
 	require.Equal(t, "gpt-5.6-luna", body["model"])
 }

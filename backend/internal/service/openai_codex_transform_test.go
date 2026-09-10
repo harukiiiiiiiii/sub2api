@@ -2225,7 +2225,11 @@ func TestImageToolDefaultPreservesTopLevelImageModel(t *testing.T) {
 		}
 		ensureOpenAIResponsesImageGenerationTool(body)
 		normalizeOpenAIResponsesImageGenerationTools(body)
-		tool := body["tools"].([]any)[0].(map[string]any)
+		tools, ok := body["tools"].([]any)
+		require.True(t, ok)
+		require.Len(t, tools, 1)
+		tool, ok := tools[0].(map[string]any)
+		require.True(t, ok)
 		require.Equal(t, "gpt-image-2", tool["model"])
 	}
 }

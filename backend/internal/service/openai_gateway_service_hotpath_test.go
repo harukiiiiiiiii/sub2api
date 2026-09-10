@@ -714,7 +714,7 @@ func TestOpenAIGatewayService_Forward_CodexBridgeInjectionSetsImageBilling(t *te
 	require.NotNil(t, result)
 	require.Equal(t, 1, result.ImageCount)
 	require.Equal(t, "2K", result.ImageSize)
-	require.Equal(t, "gpt-image-2", result.BillingModel)
+	require.Equal(t, "gpt-image-2.5-flare", result.BillingModel)
 }
 
 func TestOpenAIGatewayService_Forward_HTTPPreservesPreviousResponseIDForAPIKey(t *testing.T) {
